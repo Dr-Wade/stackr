@@ -1,0 +1,53 @@
+:root {
+  /* Neutrals — deep, near-black */
+  --bg: #0B0B0F;
+  --panel: #16161D;
+  --raised: #1F1F28;
+  --hover: #262631;
+
+  /* Text */
+  --text: #EDEDF2;
+  --muted: #9A9AAA;
+  --faint: #5C5C6A;
+
+  /* Borders */
+  --border: rgba(237, 237, 242, 0.08);
+  --border-strong: rgba(237, 237, 242, 0.14);
+
+  /* Accent — coral-pink, Raycast-ish */
+  --accent: #FF6B6B;
+  --accent-hover: #FF8585;
+  --accent-soft: rgba(255, 107, 107, 0.14);
+  --accent-ring: rgba(255, 107, 107, 0.45);
+
+  /* Semantic */
+  --green: #4ADE80;
+  --amber: #FBBF24;
+  --red: #F87171;
+
+  /* Radii */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+
+  /* Fonts */
+  --font-ui: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
