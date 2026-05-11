@@ -59,6 +59,7 @@ onBeforeUnmount(() => {
           width: `${src.w * 100}%`,
           height: `${src.h * 100}%`,
           zIndex: src.z + 1,
+          opacity: src.opacity ?? 1,
           background: 'transparent',
           colorScheme: 'light',
         }"

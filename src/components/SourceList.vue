@@ -1,20 +1,57 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useScene } from '@/composables/useScene';
+import { useToast } from '@/composables/useToast';
 import SourceRow from './SourceRow.vue';
 import AddSourceForm from './AddSourceForm.vue';
+import SceneSwitcher from './SceneSwitcher.vue';
+import SourceInspector from './SourceInspector.vue';
 
-const { sortedSources, selectedId, addSource, removeSource, updateSource, moveSource } = useScene();
+const {
+  sortedSources,
+  selectedId,
+  addSource,
+  removeSource,
+  restoreSource,
+  duplicateSource,
+  updateSource,
+  moveSource,
+  reloadSource,
+  indexOfSource,
+} = useScene();
+const { push } = useToast();
 
 const orderedDescending = computed(() => [...sortedSources.value].reverse());
 
 function onAdd(url: string) {
   addSource(url);
 }
+
+function onRemove(id: string) {
+  const idx = indexOfSource(id);
+  const removed = removeSource(id);
+  if (!removed) return;
+  push({
+    message: `Removed "${removed.name}"`,
+    kind: 'info',
+    durationMs: 5000,
+    action: {
+      label: 'Undo',
+      run: () => restoreSource(removed, idx),
+    },
+  });
+}
+
+function onReload(id: string) {
+  reloadSource(id);
+}
 </script>
 
 <template>
-  <aside class="panel flex h-full w-full flex-col overflow-hidden">
+  <aside class="panel flex h-full w-full flex-col">
+    <div class="border-b border-border px-2.5 py-2.5">
+      <SceneSwitcher />
+    </div>
     <header class="flex items-center justify-between border-b border-border px-3 py-2.5">
       <h2 class="text-xs font-medium uppercase tracking-wide text-muted">Sources</h2>
       <span class="font-mono text-[11px] text-faint">{{ sortedSources.length }}</span>
@@ -35,11 +72,15 @@ function onAdd(url: string) {
           @select="selectedId = $event"
           @toggle-visible="updateSource($event, { visible: !src.visible })"
           @rename="(id, name) => updateSource(id, { name })"
-          @remove="removeSource"
+          @remove="onRemove"
           @move="(id, dir) => moveSource(id, dir === 'up' ? 'down' : 'up')"
+          @duplicate="duplicateSource"
+          @reload="onReload"
         />
       </div>
     </div>
+
+    <SourceInspector />
 
     <div class="border-t border-border bg-bg/40 px-2.5 py-2.5">
       <AddSourceForm @add="onAdd" />

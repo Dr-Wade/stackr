@@ -1,11 +1,103 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import SourceList from '@/components/SourceList.vue';
 import CanvasPreview from '@/components/CanvasPreview.vue';
 import OutputUrlBar from '@/components/OutputUrlBar.vue';
 import HowToModal from '@/components/HowToModal.vue';
+import ToastContainer from '@/components/ToastContainer.vue';
+import { useScene, type NudgeStep } from '@/composables/useScene';
+import { useToast } from '@/composables/useToast';
+import { useOutputUrl } from '@/composables/useOutputUrl';
+import { useClipboard } from '@vueuse/core';
 
 const howToOpen = ref(false);
+
+const { selectedId, removeSource, restoreSource, duplicateSource, nudgeSelected, indexOfSource } = useScene();
+const { push } = useToast();
+const { outputUrl } = useOutputUrl();
+const { copy } = useClipboard({ legacy: true });
+
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
+function step(e: KeyboardEvent): NudgeStep {
+  if (e.shiftKey) return 'fine';
+  if (e.altKey) return 'coarse';
+  return 'normal';
+}
+
+function onKey(e: KeyboardEvent) {
+  // Allow modal/dialog code to handle Escape themselves
+  if (howToOpen.value) return;
+  if (isTypingTarget(e.target)) return;
+
+  const meta = e.metaKey || e.ctrlKey;
+
+  // Cmd/Ctrl+S → copy output URL (no save dialog, please)
+  if (meta && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    copy(outputUrl.value);
+    push({ message: 'Output URL copied', kind: 'success', durationMs: 2000 });
+    return;
+  }
+
+  // Cmd/Ctrl+D → duplicate selected
+  if (meta && e.key.toLowerCase() === 'd') {
+    if (!selectedId.value) return;
+    e.preventDefault();
+    duplicateSource(selectedId.value);
+    return;
+  }
+
+  if (!selectedId.value) return;
+
+  switch (e.key) {
+    case 'Escape':
+      e.preventDefault();
+      selectedId.value = null;
+      return;
+    case 'Delete':
+    case 'Backspace': {
+      e.preventDefault();
+      const id = selectedId.value;
+      const idx = indexOfSource(id);
+      const removed = removeSource(id);
+      if (removed) {
+        push({
+          message: `Removed "${removed.name}"`,
+          kind: 'info',
+          durationMs: 5000,
+          action: { label: 'Undo', run: () => restoreSource(removed, idx) },
+        });
+      }
+      return;
+    }
+    case 'ArrowLeft':
+      e.preventDefault();
+      nudgeSelected(-1, 0, step(e));
+      return;
+    case 'ArrowRight':
+      e.preventDefault();
+      nudgeSelected(1, 0, step(e));
+      return;
+    case 'ArrowUp':
+      e.preventDefault();
+      nudgeSelected(0, -1, step(e));
+      return;
+    case 'ArrowDown':
+      e.preventDefault();
+      nudgeSelected(0, 1, step(e));
+      return;
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKey));
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
 </script>
 
 <template>
@@ -20,7 +112,7 @@ const howToOpen = ref(false);
           </svg>
         </span>
         <h1 class="text-sm font-semibold tracking-tight text-text">Stackr</h1>
-        <span class="font-mono text-[11px] text-faint">v0.1</span>
+        <span class="font-mono text-[11px] text-faint">v0.2</span>
       </div>
       <button
         type="button"
@@ -37,6 +129,7 @@ const howToOpen = ref(false);
     </header>
 
     <HowToModal :open="howToOpen" @close="howToOpen = false" />
+    <ToastContainer />
 
     <div class="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-[280px_1fr]">
       <SourceList />

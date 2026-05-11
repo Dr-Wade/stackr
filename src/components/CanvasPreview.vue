@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useScene } from '@/composables/useScene';
+import type { SnapGuide } from '@/composables/useSnap';
 import DraggableSource from './DraggableSource.vue';
 import EmptyState from './EmptyState.vue';
+import SnapGuides from './SnapGuides.vue';
 
-const { scene, sortedSources, selectedId, updateSource, addSource } = useScene();
+const { scene, sortedSources, selectedId, updateSource, addSource, getReloadKey } = useScene();
 
 const wrapper = ref<HTMLElement | null>(null);
 const stage = ref<HTMLElement | null>(null);
@@ -12,7 +14,9 @@ const stage = ref<HTMLElement | null>(null);
 const wrapperW = ref(0);
 const wrapperH = ref(0);
 
-const aspect = computed(() => scene.canvas.w / scene.canvas.h);
+const activeGuides = ref<SnapGuide[]>([]);
+
+const aspect = computed(() => scene.value.canvas.w / scene.value.canvas.h);
 
 const stageSize = computed(() => {
   if (!wrapperW.value || !wrapperH.value) return { w: 0, h: 0 };
@@ -25,6 +29,12 @@ const stageSize = computed(() => {
   }
   return { w: Math.floor(w), h: Math.floor(h) };
 });
+
+function siblingsFor(currentId: string) {
+  return sortedSources.value
+    .filter((s) => s.id !== currentId)
+    .map((s) => ({ x: s.x, y: s.y, w: s.w, h: s.h }));
+}
 
 let resizeObserver: ResizeObserver | null = null;
 
@@ -64,11 +74,17 @@ function deselect(e: MouseEvent) {
           :container-width="stageSize.w"
           :container-height="stageSize.h"
           :selected="selectedId === src.id"
+          :siblings="siblingsFor(src.id)"
+          :reload-key="getReloadKey(src.id)"
           @select="selectedId = $event"
           @update="(id, patch) => updateSource(id, patch)"
+          @drag-guides="(g) => (activeGuides = g)"
+          @drag-end="activeGuides = []"
         />
       </template>
       <EmptyState v-else @add-sample="(url: string) => addSource(url)" />
+
+      <SnapGuides :guides="activeGuides" />
 
       <div
         class="pointer-events-none absolute right-2 bottom-2 rounded bg-bg/70 px-1.5 py-0.5 font-mono text-[10px] text-faint backdrop-blur-sm"

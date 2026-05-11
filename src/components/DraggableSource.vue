@@ -1,21 +1,25 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import type { Source } from '@/scene/types';
+import { snap, type Rect, type SnapGuide, type SnapMode } from '@/composables/useSnap';
 
 const props = defineProps<{
   source: Source;
   containerWidth: number;
   containerHeight: number;
   selected: boolean;
+  siblings: Rect[];
+  reloadKey: number;
 }>();
 
 const emit = defineEmits<{
   (e: 'select', id: string): void;
   (e: 'update', id: string, patch: Partial<Source>): void;
+  (e: 'drag-guides', guides: SnapGuide[]): void;
+  (e: 'drag-end'): void;
 }>();
 
-type Mode = 'idle' | 'move' | 'resize-br';
-const mode = ref<Mode>('idle');
+const mode = ref<SnapMode | 'idle'>('idle');
 
 const start = ref({
   pointerX: 0,
@@ -24,9 +28,10 @@ const start = ref({
   y: 0,
   w: 0,
   h: 0,
+  altKey: false,
 });
 
-function onPointerDown(e: PointerEvent, m: Exclude<Mode, 'idle'>) {
+function onPointerDown(e: PointerEvent, m: SnapMode) {
   e.preventDefault();
   e.stopPropagation();
   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -38,32 +43,99 @@ function onPointerDown(e: PointerEvent, m: Exclude<Mode, 'idle'>) {
     y: props.source.y,
     w: props.source.w,
     h: props.source.h,
+    altKey: e.altKey,
   };
   emit('select', props.source.id);
 }
 
+function applyDelta(
+  m: SnapMode,
+  s: typeof start.value,
+  dxFrac: number,
+  dyFrac: number,
+): Rect {
+  let { x, y, w, h } = s;
+  switch (m) {
+    case 'move':
+      x = s.x + dxFrac;
+      y = s.y + dyFrac;
+      break;
+    case 'resize-br':
+      w = s.w + dxFrac;
+      h = s.h + dyFrac;
+      break;
+    case 'resize-bl':
+      x = s.x + dxFrac;
+      w = s.w - dxFrac;
+      h = s.h + dyFrac;
+      break;
+    case 'resize-tr':
+      y = s.y + dyFrac;
+      w = s.w + dxFrac;
+      h = s.h - dyFrac;
+      break;
+    case 'resize-tl':
+      x = s.x + dxFrac;
+      y = s.y + dyFrac;
+      w = s.w - dxFrac;
+      h = s.h - dyFrac;
+      break;
+    case 'resize-t':
+      y = s.y + dyFrac;
+      h = s.h - dyFrac;
+      break;
+    case 'resize-b':
+      h = s.h + dyFrac;
+      break;
+    case 'resize-l':
+      x = s.x + dxFrac;
+      w = s.w - dxFrac;
+      break;
+    case 'resize-r':
+      w = s.w + dxFrac;
+      break;
+  }
+  return { x, y, w, h };
+}
+
 function onPointerMove(e: PointerEvent) {
-  if (mode.value === 'idle') return;
+  const m = mode.value;
+  if (m === 'idle') return;
   if (props.containerWidth === 0 || props.containerHeight === 0) return;
   const dxFrac = (e.clientX - start.value.pointerX) / props.containerWidth;
   const dyFrac = (e.clientY - start.value.pointerY) / props.containerHeight;
-  if (mode.value === 'move') {
-    emit('update', props.source.id, {
-      x: start.value.x + dxFrac,
-      y: start.value.y + dyFrac,
-    });
-  } else if (mode.value === 'resize-br') {
-    emit('update', props.source.id, {
-      w: start.value.w + dxFrac,
-      h: start.value.h + dyFrac,
-    });
+
+  let next = applyDelta(m, start.value, dxFrac, dyFrac);
+
+  // Hold Alt while dragging to suppress snapping.
+  if (!e.altKey) {
+    const result = snap(
+      next,
+      props.siblings,
+      props.containerWidth,
+      props.containerHeight,
+      m,
+    );
+    next = result.rect;
+    emit('drag-guides', result.guides);
+  } else {
+    emit('drag-guides', []);
   }
+
+  emit('update', props.source.id, {
+    x: next.x,
+    y: next.y,
+    w: next.w,
+    h: next.h,
+  });
 }
 
 function onPointerUp(e: PointerEvent) {
   if (mode.value === 'idle') return;
   (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
   mode.value = 'idle';
+  emit('drag-guides', []);
+  emit('drag-end');
 }
 
 const styleObj = (s: Source, isSelected: boolean) => ({
@@ -71,11 +143,17 @@ const styleObj = (s: Source, isSelected: boolean) => ({
   top: `${s.y * 100}%`,
   width: `${s.w * 100}%`,
   height: `${s.h * 100}%`,
-  // Selected source floats above siblings in the editor so its chrome is
-  // visible and it remains the topmost click target. The scene's real z
-  // order is unchanged (output renders by source.z only).
   zIndex: isSelected ? 9999 : s.z + 1,
+  opacity: s.opacity ?? 1,
 });
+
+// Each resize handle binds the same three pointer handlers; this keeps the
+// template tidy.
+const handleCommon = {
+  pointermove: onPointerMove,
+  pointerup: onPointerUp,
+  pointercancel: onPointerUp,
+};
 </script>
 
 <template>
@@ -89,6 +167,7 @@ const styleObj = (s: Source, isSelected: boolean) => ({
     @pointercancel="onPointerUp"
   >
     <iframe
+      :key="reloadKey"
       :src="source.url"
       :title="source.name"
       class="pointer-events-none h-full w-full border-0"
@@ -98,8 +177,7 @@ const styleObj = (s: Source, isSelected: boolean) => ({
       loading="lazy"
     ></iframe>
 
-    <!-- Inset selection ring so it's never clipped by the stage's overflow.
-         Uses inset box-shadow rather than outline so it tracks the box exactly. -->
+    <!-- Inset selection ring so it's never clipped by the stage's overflow. -->
     <div
       class="pointer-events-none absolute inset-0 rounded-sm transition-shadow duration-150"
       :class="
@@ -116,15 +194,58 @@ const styleObj = (s: Source, isSelected: boolean) => ({
       {{ source.name }}
     </div>
 
-    <div
-      v-if="selected"
-      class="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize rounded-tl-sm border border-bg bg-accent"
-      role="slider"
-      aria-label="Resize"
-      @pointerdown.stop="onPointerDown($event, 'resize-br')"
-      @pointermove.stop="onPointerMove"
-      @pointerup.stop="onPointerUp"
-      @pointercancel.stop="onPointerUp"
-    ></div>
+    <!-- Edge handles -->
+    <template v-if="selected">
+      <div
+        class="absolute top-0 left-2 right-2 h-1.5 cursor-ns-resize"
+        @pointerdown.stop="onPointerDown($event, 'resize-t')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute bottom-0 left-2 right-2 h-1.5 cursor-ns-resize"
+        @pointerdown.stop="onPointerDown($event, 'resize-b')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute top-2 bottom-2 left-0 w-1.5 cursor-ew-resize"
+        @pointerdown.stop="onPointerDown($event, 'resize-l')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute top-2 bottom-2 right-0 w-1.5 cursor-ew-resize"
+        @pointerdown.stop="onPointerDown($event, 'resize-r')"
+        v-on="handleCommon"
+      ></div>
+
+      <!-- Corner handles -->
+      <div
+        class="absolute top-0 left-0 h-3 w-3 cursor-nwse-resize rounded-sm border border-bg bg-accent"
+        role="slider"
+        aria-label="Resize top-left"
+        @pointerdown.stop="onPointerDown($event, 'resize-tl')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute top-0 right-0 h-3 w-3 cursor-nesw-resize rounded-sm border border-bg bg-accent"
+        role="slider"
+        aria-label="Resize top-right"
+        @pointerdown.stop="onPointerDown($event, 'resize-tr')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute bottom-0 left-0 h-3 w-3 cursor-nesw-resize rounded-sm border border-bg bg-accent"
+        role="slider"
+        aria-label="Resize bottom-left"
+        @pointerdown.stop="onPointerDown($event, 'resize-bl')"
+        v-on="handleCommon"
+      ></div>
+      <div
+        class="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize rounded-sm border border-bg bg-accent"
+        role="slider"
+        aria-label="Resize bottom-right"
+        @pointerdown.stop="onPointerDown($event, 'resize-br')"
+        v-on="handleCommon"
+      ></div>
+    </template>
   </div>
 </template>

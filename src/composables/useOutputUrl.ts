@@ -5,7 +5,7 @@ import { encodeScene } from './useSceneEncoding';
 export function useOutputUrl() {
   const { scene } = useScene();
 
-  const encoded = computed(() => encodeScene(scene));
+  const encoded = computed(() => encodeScene(scene.value));
 
   const outputUrl = computed(() => {
     const base = `${window.location.origin}/view`;

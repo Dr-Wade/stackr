@@ -1,20 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useClipboard } from '@vueuse/core';
 import { useOutputUrl } from '@/composables/useOutputUrl';
 import { useScene } from '@/composables/useScene';
+import { useToast } from '@/composables/useToast';
 
 const { outputUrl } = useOutputUrl();
 const { sortedSources } = useScene();
-const { copy, copied, isSupported } = useClipboard({ source: outputUrl, legacy: true });
+const { copy } = useClipboard({ legacy: true });
+const { push } = useToast();
 
-const fallbackCopied = ref(false);
 async function onCopy() {
   await copy(outputUrl.value);
-  if (!isSupported.value) {
-    fallbackCopied.value = true;
-    setTimeout(() => (fallbackCopied.value = false), 1500);
-  }
+  push({ message: 'Output URL copied', kind: 'success', durationMs: 2000 });
 }
 </script>
 
@@ -40,7 +37,7 @@ async function onCopy() {
         <rect x="9" y="9" width="13" height="13" rx="2" />
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
       </svg>
-      <span>{{ copied || fallbackCopied ? 'Copied' : 'Copy' }}</span>
+      <span>Copy</span>
     </button>
     <a
       :href="outputUrl"

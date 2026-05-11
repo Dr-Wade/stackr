@@ -78,11 +78,19 @@ watch(
               </li>
               <li>
                 <span class="text-text">Drag</span> the source on the canvas to reposition
-                it; drag the bottom-right corner to resize.
+                it; drag any edge or corner to resize. Sources
+                <span class="text-text">snap</span> to canvas edges, the centre, and
+                other sources — hold
+                <kbd class="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-text">Alt</kbd>
+                to disable snapping.
               </li>
               <li>
-                <span class="text-text">Reorder, rename, hide, or remove</span> sources
-                from the sidebar. Sources higher in the list render on top.
+                Use the <span class="text-text">inspector</span> in the sidebar to set
+                exact percentages and adjust opacity.
+              </li>
+              <li>
+                <span class="text-text">Reorder, rename, hide, duplicate, reload, or remove</span>
+                sources from the sidebar. Sources higher in the list render on top.
               </li>
               <li>
                 <span class="text-text">Click a source row</span> to select it on the
@@ -93,19 +101,75 @@ watch(
 
           <section class="space-y-2">
             <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
+              Keyboard shortcuts
+            </h3>
+            <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-sm">
+              <dt class="font-mono text-[11px] text-text">
+                <kbd class="rounded bg-raised px-1.5 py-0.5">←</kbd>
+                <kbd class="rounded bg-raised px-1.5 py-0.5">→</kbd>
+                <kbd class="rounded bg-raised px-1.5 py-0.5">↑</kbd>
+                <kbd class="rounded bg-raised px-1.5 py-0.5">↓</kbd>
+              </dt>
+              <dd>Nudge the selected source. Hold
+                <kbd class="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-text">Shift</kbd>
+                for fine,
+                <kbd class="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-text">Alt</kbd>
+                for coarse.
+              </dd>
+              <dt class="font-mono text-[11px] text-text">
+                <kbd class="rounded bg-raised px-1.5 py-0.5">⌘</kbd>
+                <kbd class="rounded bg-raised px-1.5 py-0.5">D</kbd>
+              </dt>
+              <dd>Duplicate the selected source.</dd>
+              <dt class="font-mono text-[11px] text-text">
+                <kbd class="rounded bg-raised px-1.5 py-0.5">⌘</kbd>
+                <kbd class="rounded bg-raised px-1.5 py-0.5">S</kbd>
+              </dt>
+              <dd>Copy the output URL.</dd>
+              <dt class="font-mono text-[11px] text-text">
+                <kbd class="rounded bg-raised px-1.5 py-0.5">Delete</kbd>
+              </dt>
+              <dd>Remove the selected source (with undo).</dd>
+              <dt class="font-mono text-[11px] text-text">
+                <kbd class="rounded bg-raised px-1.5 py-0.5">Esc</kbd>
+              </dt>
+              <dd>Deselect.</dd>
+            </dl>
+          </section>
+
+          <section class="space-y-2">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
+              Scenes
+            </h3>
+            <p>
+              The dropdown at the top of the sidebar is your
+              <span class="text-text">scene library</span>. Each scene has its own
+              sources and its own output URL. Switch instantly, duplicate as a starting
+              point, or rename them as you go.
+            </p>
+            <p>
+              <span class="text-text">Import from URL</span> lets you paste any Stackr
+              output URL into a new scene — handy for moving between browsers or
+              recovering a scene from a URL you saved.
+            </p>
+          </section>
+
+          <section class="space-y-2">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
               Using the output URL
             </h3>
             <p>
-              The bar at the bottom shows a long URL containing your entire scene encoded
-              into the hash. Copy it and paste it as a
+              The bar at the bottom shows a long URL containing the
+              <span class="text-text">active scene</span> encoded into the hash. Copy
+              it and paste it as a
               <span class="text-text">Browser Source in OBS</span> (or any tool that
               accepts a URL) at 1920×1080. There's no server and no account — the URL
               <em>is</em> the scene.
             </p>
             <p class="text-faint">
-              Re-opening Stackr in the same browser restores your last scene
-              automatically. To edit the same scene elsewhere, just open the output URL —
-              it's self-contained.
+              Your scenes are saved in this browser automatically. To move a scene
+              elsewhere, copy its output URL and open it on the other side — every
+              scene's URL is self-contained.
             </p>
           </section>
 
