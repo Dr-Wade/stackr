@@ -1,6 +1,6 @@
 import pako from 'pako';
 import type { Scene } from '@/scene/types';
-import { SCENE_VERSION, migrateV1Scene } from '@/scene/types';
+import { migrateSceneIfNeeded } from '@/scene/types';
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let bin = '';
@@ -29,26 +29,7 @@ export function decodeScene(payload: string): Scene | null {
     const bytes = base64UrlDecode(payload);
     const json = new TextDecoder().decode(pako.inflate(bytes));
     const parsed = JSON.parse(json);
-    if (!parsed || typeof parsed !== 'object') return null;
-
-    // v2: native
-    if (parsed.v === SCENE_VERSION && Array.isArray(parsed.sources)) {
-      // Tolerate missing opacity on individual sources
-      return {
-        ...parsed,
-        sources: parsed.sources.map((s: { opacity?: number }) => ({
-          ...s,
-          opacity: typeof s.opacity === 'number' ? s.opacity : 1,
-        })),
-      } as Scene;
-    }
-
-    // v1: migrate (used by Import-from-URL on legacy URLs shared from v1 deploys)
-    if (parsed.v === 1 && Array.isArray(parsed.sources)) {
-      return migrateV1Scene(parsed);
-    }
-
-    return null;
+    return migrateSceneIfNeeded(parsed);
   } catch {
     return null;
   }
@@ -62,7 +43,6 @@ export function decodeScene(payload: string): Scene | null {
 export function extractEncodedFromUrl(input: string): string | null {
   const trimmed = input.trim();
   if (!trimmed) return null;
-  // Bare payload (no #)
   if (!trimmed.includes('#') && !/^https?:/i.test(trimmed)) {
     return trimmed;
   }
@@ -71,7 +51,6 @@ export function extractEncodedFromUrl(input: string): string | null {
     if (url.hash.startsWith('#')) return url.hash.slice(1);
     return null;
   } catch {
-    // Maybe a hash fragment with leading '#'
     if (trimmed.startsWith('#')) return trimmed.slice(1);
     return null;
   }

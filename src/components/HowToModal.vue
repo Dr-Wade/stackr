@@ -139,6 +139,63 @@ watch(
 
           <section class="space-y-2">
             <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
+              Source types
+            </h3>
+            <p>The <span class="text-text">Add source</span> button at the bottom of the
+              sidebar offers six kinds of source:</p>
+            <ul class="list-disc space-y-1 pl-5">
+              <li><span class="text-text">Web</span> — any URL, rendered in an iframe. Use
+                this for purpose-built overlays (StreamElements, Streamlabs, custom widgets).</li>
+              <li><span class="text-text">Text</span> — a static label with full styling:
+                font, weight, color, alignment, shadow, outline, letter spacing.</li>
+              <li><span class="text-text">Timer / clock</span> — countdown (e.g. "5:00"),
+                count-up, or current time. Reuses the text styling.</li>
+              <li><span class="text-text">Image</span> — a static image from a URL.
+                Honours PNG transparency.</li>
+              <li><span class="text-text">Rectangle</span> — a solid (or translucent)
+                colour fill with rounded corners. Useful for lower-third bars.</li>
+              <li><span class="text-text">QR code</span> — generated locally as crisp SVG.
+                Customise foreground / background / rounded modules / error correction.</li>
+            </ul>
+          </section>
+
+          <section class="space-y-2">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
+              Fonts
+            </h3>
+            <p>
+              The font picker is backed by
+              <a href="https://fonts.bunny.net" target="_blank" rel="noopener noreferrer" class="text-text underline decoration-faint underline-offset-2 hover:decoration-text">Bunny Fonts</a>
+              — a GDPR-friendly mirror of Google Fonts. Pick from the curated list, or
+              type any Bunny / Google font name into the
+              <span class="text-text">Other…</span> field.
+            </p>
+            <p class="text-faint">
+              Fonts load at <code class="font-mono text-[12px]">/view</code> time over the
+              network. If OBS is offline, text falls back to the system default.
+              Unrecognised names also silently fall back — there's no error.
+            </p>
+          </section>
+
+          <section class="space-y-2">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
+              Timers
+            </h3>
+            <p>
+              Countdown and count-up timers use a <span class="text-text">relative
+              duration</span> — they start from zero (or the configured duration) the
+              moment <code class="font-mono text-[12px]">/view</code> loads. Refreshing
+              the OBS browser source restarts them. For "stream starts at 8 PM" use, set
+              the duration to the time remaining when you start the stream.
+            </p>
+            <p class="text-faint">
+              Clock mode shows the local wall-clock time on the device rendering the
+              scene (OBS, your browser, etc.).
+            </p>
+          </section>
+
+          <section class="space-y-2">
+            <h3 class="text-xs font-medium uppercase tracking-wide text-faint">
               Scenes
             </h3>
             <p>

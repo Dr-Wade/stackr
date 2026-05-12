@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { provide, reactive, ref, computed, onMounted, onBeforeUnmount, watch } from 'vue';
 import { useScene } from '@/composables/useScene';
 import type { SnapGuide } from '@/composables/useSnap';
 import DraggableSource from './DraggableSource.vue';
 import EmptyState from './EmptyState.vue';
 import SnapGuides from './SnapGuides.vue';
 
-const { scene, sortedSources, selectedId, updateSource, addSource, getReloadKey } = useScene();
+const { scene, sortedSources, selectedId, updateSource, getReloadKey } = useScene();
 
 const wrapper = ref<HTMLElement | null>(null);
 const stage = ref<HTMLElement | null>(null);
@@ -29,6 +29,18 @@ const stageSize = computed(() => {
   }
   return { w: Math.floor(w), h: Math.floor(h) };
 });
+
+// Provide canvas scale (screen px / canvas px) for type-native components
+// (text size, rect radius). A reactive object so .value updates flow.
+const canvasScale = reactive({ value: 1 });
+watch(
+  () => [stageSize.value.h, scene.value.canvas.h],
+  ([sh, ch]) => {
+    if (sh && ch) canvasScale.value = sh / ch;
+  },
+  { immediate: true },
+);
+provide('canvasScale', canvasScale);
 
 function siblingsFor(currentId: string) {
   return sortedSources.value
@@ -82,7 +94,7 @@ function deselect(e: MouseEvent) {
           @drag-end="activeGuides = []"
         />
       </template>
-      <EmptyState v-else @add-sample="(url: string) => addSource(url)" />
+      <EmptyState v-else />
 
       <SnapGuides :guides="activeGuides" />
 

@@ -3,14 +3,13 @@ import { computed } from 'vue';
 import { useScene } from '@/composables/useScene';
 import { useToast } from '@/composables/useToast';
 import SourceRow from './SourceRow.vue';
-import AddSourceForm from './AddSourceForm.vue';
+import AddSourceMenu from './AddSourceMenu.vue';
 import SceneSwitcher from './SceneSwitcher.vue';
 import SourceInspector from './SourceInspector.vue';
 
 const {
   sortedSources,
   selectedId,
-  addSource,
   removeSource,
   restoreSource,
   duplicateSource,
@@ -22,10 +21,6 @@ const {
 const { push } = useToast();
 
 const orderedDescending = computed(() => [...sortedSources.value].reverse());
-
-function onAdd(url: string) {
-  addSource(url);
-}
 
 function onRemove(id: string) {
   const idx = indexOfSource(id);
@@ -48,7 +43,7 @@ function onReload(id: string) {
 </script>
 
 <template>
-  <aside class="panel flex h-full w-full flex-col">
+  <aside class="panel flex h-full w-full flex-col overflow-hidden">
     <div class="border-b border-border px-2.5 py-2.5">
       <SceneSwitcher />
     </div>
@@ -83,7 +78,7 @@ function onReload(id: string) {
     <SourceInspector />
 
     <div class="border-t border-border bg-bg/40 px-2.5 py-2.5">
-      <AddSourceForm @add="onAdd" />
+      <AddSourceMenu />
     </div>
   </aside>
 </template>

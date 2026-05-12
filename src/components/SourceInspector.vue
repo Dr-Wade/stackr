@@ -1,8 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useScene } from '@/composables/useScene';
+import type { Source } from '@/scene/types';
+import TextInspector from './inspectors/TextInspector.vue';
+import TimerInspector from './inspectors/TimerInspector.vue';
+import ImageInspector from './inspectors/ImageInspector.vue';
+import RectInspector from './inspectors/RectInspector.vue';
+import QrInspector from './inspectors/QrInspector.vue';
 
 const { selectedSource, updateSource } = useScene();
+
+function onTypePatch(patch: Partial<Source>) {
+  const id = selectedSource.value?.id;
+  if (!id) return;
+  updateSource(id, patch);
+}
 
 // All four position/size values are stored as 0..1 fractions; show as
 // percentages with one decimal place in the UI.
@@ -35,7 +47,7 @@ const opacityPct = computed(() =>
 </script>
 
 <template>
-  <div v-if="selectedSource" class="space-y-3 border-t border-border bg-bg/40 px-2.5 py-2.5">
+  <div v-if="selectedSource" class="max-h-[45%] shrink-0 space-y-3 overflow-y-auto border-t border-border bg-bg/40 px-2.5 py-2.5">
     <header class="flex items-center justify-between">
       <h3 class="text-[11px] font-medium uppercase tracking-wide text-muted">
         Selected
@@ -107,6 +119,34 @@ const opacityPct = computed(() =>
         :value="opacityPct"
         class="w-full accent-accent"
         @input="(e) => onOpacity((e.target as HTMLInputElement).value)"
+      />
+    </div>
+
+    <div class="border-t border-border pt-2.5">
+      <TextInspector
+        v-if="selectedSource.type === 'text'"
+        :source="selectedSource"
+        @patch="onTypePatch"
+      />
+      <TimerInspector
+        v-else-if="selectedSource.type === 'timer'"
+        :source="selectedSource"
+        @patch="onTypePatch"
+      />
+      <ImageInspector
+        v-else-if="selectedSource.type === 'image'"
+        :source="selectedSource"
+        @patch="onTypePatch"
+      />
+      <RectInspector
+        v-else-if="selectedSource.type === 'rect'"
+        :source="selectedSource"
+        @patch="onTypePatch"
+      />
+      <QrInspector
+        v-else-if="selectedSource.type === 'qr'"
+        :source="selectedSource"
+        @patch="onTypePatch"
       />
     </div>
   </div>

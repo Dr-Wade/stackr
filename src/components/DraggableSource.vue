@@ -2,6 +2,12 @@
 import { ref } from 'vue';
 import type { Source } from '@/scene/types';
 import { snap, type Rect, type SnapGuide, type SnapMode } from '@/composables/useSnap';
+import SourceWeb from './sources/SourceWeb.vue';
+import SourceText from './sources/SourceText.vue';
+import SourceTimer from './sources/SourceTimer.vue';
+import SourceImage from './sources/SourceImage.vue';
+import SourceRect from './sources/SourceRect.vue';
+import SourceQr from './sources/SourceQr.vue';
 
 const props = defineProps<{
   source: Source;
@@ -166,16 +172,12 @@ const handleCommon = {
     @pointerup="onPointerUp"
     @pointercancel="onPointerUp"
   >
-    <iframe
-      :key="reloadKey"
-      :src="source.url"
-      :title="source.name"
-      class="pointer-events-none h-full w-full border-0"
-      :style="{ background: 'transparent', colorScheme: 'light' }"
-      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-      referrerpolicy="no-referrer-when-downgrade"
-      loading="lazy"
-    ></iframe>
+    <SourceWeb v-if="source.type === 'web'" :source="source" :reload-key="reloadKey" />
+    <SourceText v-else-if="source.type === 'text'" :source="source" />
+    <SourceTimer v-else-if="source.type === 'timer'" :source="source" />
+    <SourceImage v-else-if="source.type === 'image'" :source="source" :reload-key="reloadKey" />
+    <SourceRect v-else-if="source.type === 'rect'" :source="source" />
+    <SourceQr v-else-if="source.type === 'qr'" :source="source" />
 
     <!-- Inset selection ring so it's never clipped by the stage's overflow. -->
     <div

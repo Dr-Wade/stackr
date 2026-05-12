@@ -1,6 +1,20 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { nanoid } from 'nanoid';
-import { defaultSource, type Source } from '@/scene/types';
+import {
+  defaultWebSource,
+  defaultTextSource,
+  defaultTimerSource,
+  defaultImageSource,
+  defaultRectSource,
+  defaultQrSource,
+  type Source,
+  type WebSource,
+  type TextSource,
+  type TimerSource,
+  type ImageSource,
+  type RectSource,
+  type QrSource,
+} from '@/scene/types';
 import { useLibrary } from './useLibrary';
 import { probeUrl } from './usePreflight';
 
@@ -36,16 +50,63 @@ function touch() {
   activeScene.value.updatedAt = Date.now();
 }
 
-function addSource(url: string): Source {
+function nextZ(): number {
   const scene = activeScene.value;
-  const z = scene.sources.length
+  return scene.sources.length
     ? Math.max(...scene.sources.map((s) => s.z)) + 1
     : 0;
-  const src: Source = { id: nanoid(8), ...defaultSource(url, z) };
+}
+
+// --- addSource overloads, discriminated on `type` -------------------------
+
+export type AddInput =
+  | { type: 'web'; url: string }
+  | { type: 'text' }
+  | { type: 'timer' }
+  | { type: 'image'; url: string }
+  | { type: 'rect' }
+  | { type: 'qr' };
+
+export function addSource(input: { type: 'web'; url: string }): WebSource;
+export function addSource(input: { type: 'text' }): TextSource;
+export function addSource(input: { type: 'timer' }): TimerSource;
+export function addSource(input: { type: 'image'; url: string }): ImageSource;
+export function addSource(input: { type: 'rect' }): RectSource;
+export function addSource(input: { type: 'qr' }): QrSource;
+export function addSource(input: AddInput): Source {
+  const scene = activeScene.value;
+  const z = nextZ();
+  let src: Source;
+  switch (input.type) {
+    case 'web': {
+      src = { id: nanoid(8), ...defaultWebSource(input.url, z) };
+      break;
+    }
+    case 'text': {
+      src = { id: nanoid(8), ...defaultTextSource(z) };
+      break;
+    }
+    case 'timer': {
+      src = { id: nanoid(8), ...defaultTimerSource(z) };
+      break;
+    }
+    case 'image': {
+      src = { id: nanoid(8), ...defaultImageSource(input.url, z) };
+      break;
+    }
+    case 'rect': {
+      src = { id: nanoid(8), ...defaultRectSource(z) };
+      break;
+    }
+    case 'qr': {
+      src = { id: nanoid(8), ...defaultQrSource(z) };
+      break;
+    }
+  }
   scene.sources.push(src);
   selectedId.value = src.id;
   touch();
-  probeUrl(src.id, url);
+  if (src.type === 'web') probeUrl(src.id, src.url);
   return src;
 }
 
@@ -70,14 +131,11 @@ function duplicateSource(id: string): Source | null {
   const scene = activeScene.value;
   const src = scene.sources.find((s) => s.id === id);
   if (!src) return null;
-  const maxZ = scene.sources.length
-    ? Math.max(...scene.sources.map((s) => s.z)) + 1
-    : 0;
+  const maxZ = nextZ();
   const copy: Source = {
     ...src,
     id: nanoid(8),
     name: `${src.name} copy`,
-    // Nudge the duplicate so it's visibly distinct.
     x: clamp01(src.x + 0.02),
     y: clamp01(src.y + 0.02),
     z: maxZ,
@@ -92,15 +150,20 @@ function indexOfSource(id: string): number {
   return activeScene.value.sources.findIndex((s) => s.id === id);
 }
 
-function updateSource(id: string, patch: Partial<Source>) {
+// Patch type intentionally broad: a typed patch per source type would be
+// strict to define and the runtime is forgiving — we accept any subset of
+// the fields and the type-specific renderers ignore irrelevant changes.
+type SourcePatch = Partial<Source> & Record<string, unknown>;
+
+function updateSource(id: string, patch: SourcePatch) {
   const scene = activeScene.value;
   const src = scene.sources.find((s) => s.id === id);
   if (!src) return;
-  if (patch.x !== undefined) patch.x = clamp01(patch.x);
-  if (patch.y !== undefined) patch.y = clamp01(patch.y);
-  if (patch.w !== undefined) patch.w = Math.max(0.02, clamp01(patch.w));
-  if (patch.h !== undefined) patch.h = Math.max(0.02, clamp01(patch.h));
-  if (patch.opacity !== undefined) patch.opacity = clamp01(patch.opacity);
+  if (typeof patch.x === 'number') patch.x = clamp01(patch.x);
+  if (typeof patch.y === 'number') patch.y = clamp01(patch.y);
+  if (typeof patch.w === 'number') patch.w = Math.max(0.02, clamp01(patch.w));
+  if (typeof patch.h === 'number') patch.h = Math.max(0.02, clamp01(patch.h));
+  if (typeof patch.opacity === 'number') patch.opacity = clamp01(patch.opacity);
   Object.assign(src, patch);
   touch();
 }

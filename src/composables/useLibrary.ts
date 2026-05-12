@@ -5,29 +5,52 @@ import {
   emptyLibrary,
   emptyScene,
   tryMigrateV1Scene,
+  tryMigrateV2Library,
+  LIBRARY_VERSION,
+  SCENE_VERSION,
   type Library,
   type Scene,
 } from '@/scene/types';
 import { decodeScene, extractEncodedFromUrl } from './useSceneEncoding';
 
-const LIBRARY_KEY = 'stackr.library.v2';
+const LIBRARY_KEY = 'stackr.library.v3';
+const LEGACY_V2_KEY = 'stackr.library.v2';
 const LEGACY_V1_KEY = 'stackr.scene.v1';
 
 function loadLibrary(): Library {
-  // 1. Try v2 library
+  // 1. Native v3 library
   try {
     const raw = localStorage.getItem(LIBRARY_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Library;
-      if (parsed.v === 2 && Array.isArray(parsed.scenes) && parsed.scenes.length > 0) {
+      if (
+        parsed.v === LIBRARY_VERSION &&
+        Array.isArray(parsed.scenes) &&
+        parsed.scenes.length > 0
+      ) {
         return parsed;
       }
     }
   } catch {
-    // fall through to migration / empty
+    // fall through
   }
 
-  // 2. Migrate from v1 if a v1 scene exists
+  // 2. v2 library → migrate
+  try {
+    const v2Raw = localStorage.getItem(LEGACY_V2_KEY);
+    if (v2Raw) {
+      const migrated = tryMigrateV2Library(v2Raw);
+      if (migrated) {
+        localStorage.removeItem(LEGACY_V2_KEY);
+        return migrated;
+      }
+      localStorage.removeItem(LEGACY_V2_KEY);
+    }
+  } catch {
+    // fall through
+  }
+
+  // 3. v1 single-scene → wrap as library + migrate
   try {
     const v1Raw = localStorage.getItem(LEGACY_V1_KEY);
     if (v1Raw) {
@@ -35,21 +58,20 @@ function loadLibrary(): Library {
       if (migrated) {
         migrated.name = 'My scene';
         const lib: Library = {
-          v: 2,
+          v: LIBRARY_VERSION,
           activeId: migrated.id,
           scenes: [migrated],
         };
         localStorage.removeItem(LEGACY_V1_KEY);
         return lib;
       }
-      // unparseable — drop it so we don't loop trying
       localStorage.removeItem(LEGACY_V1_KEY);
     }
   } catch {
     // fall through
   }
 
-  // 3. Fresh empty library
+  // 4. Fresh empty library
   return emptyLibrary();
 }
 
@@ -67,7 +89,6 @@ watch(library, () => persist(), { deep: true });
 
 const activeScene = computed<Scene>(() => {
   const found = library.scenes.find((s) => s.id === library.activeId);
-  // Defensive: if activeId points at a deleted scene, fall back to first.
   return found ?? library.scenes[0];
 });
 
@@ -105,7 +126,7 @@ function duplicateScene(id: string): Scene | null {
   const scene = library.scenes.find((s) => s.id === id);
   if (!scene) return null;
   const copy: Scene = {
-    v: 2,
+    v: SCENE_VERSION,
     id: nanoid(8),
     name: uniqueName(`${scene.name} copy`),
     canvas: { ...scene.canvas },
@@ -143,7 +164,6 @@ function importSceneFromUrl(input: string, nameHint?: string): ImportResult {
   if (!payload) return { ok: false, reason: 'invalid' };
   const decoded = decodeScene(payload);
   if (!decoded) return { ok: false, reason: 'invalid' };
-  // Re-stamp identity so it joins the library cleanly
   const scene: Scene = {
     ...decoded,
     id: nanoid(8),

@@ -21,7 +21,15 @@ const emit = defineEmits<{
 }>();
 
 const { status } = usePreflight();
-const preflightStatus = computed(() => status[props.source.id] ?? 'unknown');
+const preflightStatus = computed(() =>
+  props.source.type === 'web' ? status[props.source.id] ?? 'unknown' : 'unknown',
+);
+
+function openInNewTabUrl(): string | null {
+  if (props.source.type === 'web') return props.source.url;
+  if (props.source.type === 'image') return props.source.imageUrl || null;
+  return null;
+}
 
 const editing = ref(false);
 const draftName = ref(props.source.name);
@@ -40,8 +48,32 @@ function commit() {
 
 function openInNewTab(e: Event) {
   e.stopPropagation();
-  window.open(props.source.url, '_blank', 'noopener,noreferrer');
+  const url = openInNewTabUrl();
+  if (url) window.open(url, '_blank', 'noopener,noreferrer');
 }
+
+function describeSource(): string {
+  switch (props.source.type) {
+    case 'web':
+      return props.source.url;
+    case 'image':
+      return props.source.imageUrl || 'No image URL';
+    case 'text':
+      return props.source.text.content.slice(0, 80) || 'Empty text';
+    case 'timer': {
+      const { mode, durationSec } = props.source.timer;
+      if (mode === 'clock') return 'Clock';
+      const m = Math.floor(durationSec / 60);
+      const s = durationSec % 60;
+      return `${mode === 'countdown' ? 'Countdown' : 'Count-up'} ${m}:${s.toString().padStart(2, '0')}`;
+    }
+    case 'rect':
+      return props.source.color;
+    case 'qr':
+      return props.source.qr.data || 'Empty QR';
+  }
+}
+
 </script>
 
 <template>
@@ -113,11 +145,32 @@ function openInNewTab(e: Event) {
           title="Checking embedding…"
         ></span>
       </div>
-      <p class="truncate font-mono text-[11px] text-faint">{{ source.url }}</p>
+      <p class="flex items-center gap-1 truncate text-[11px] text-faint">
+        <svg v-if="source.type === 'web'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+        </svg>
+        <svg v-else-if="source.type === 'text'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <polyline points="4 7 4 4 20 4 20 7" /><line x1="9" y1="20" x2="15" y2="20" /><line x1="12" y1="4" x2="12" y2="20" />
+        </svg>
+        <svg v-else-if="source.type === 'timer'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <circle cx="12" cy="13" r="8" /><polyline points="12 9 12 13 14 15" />
+        </svg>
+        <svg v-else-if="source.type === 'image'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+        </svg>
+        <svg v-else-if="source.type === 'rect'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <rect x="3" y="6" width="18" height="12" rx="2" />
+        </svg>
+        <svg v-else-if="source.type === 'qr'" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0">
+          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><line x1="14" y1="14" x2="21" y2="14" /><line x1="14" y1="21" x2="21" y2="21" />
+        </svg>
+        <span class="truncate font-mono">{{ describeSource() }}</span>
+      </p>
     </div>
 
     <div class="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100" :class="{ '!opacity-100': selected }">
       <button
+        v-if="source.type === 'web' || source.type === 'image'"
         type="button"
         class="flex h-6 w-6 items-center justify-center rounded text-muted hover:bg-raised hover:text-text"
         aria-label="Reload"

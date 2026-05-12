@@ -112,7 +112,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey));
           </svg>
         </span>
         <h1 class="text-sm font-semibold tracking-tight text-text">Stackr</h1>
-        <span class="font-mono text-[11px] text-faint">v0.2</span>
+        <span class="font-mono text-[11px] text-faint">v0.3</span>
       </div>
       <button
         type="button"
