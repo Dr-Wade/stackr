@@ -1,0 +1,8 @@
+minimumReleaseAge: 1440            # 1 day, in minutes — everyday floor
+minimumReleaseAgeStrict: false
+
+# pnpm 11+ fails installs on unapproved build scripts; pnpm 10 skipped these
+# silently. Deny them explicitly to keep that behaviour.
+allowBuilds:
+  esbuild: false
+  vue-demi: false
